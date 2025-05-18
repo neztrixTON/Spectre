@@ -1,5 +1,5 @@
 // index.js
-// Node.js Express backend: Telegram MiniApp init & gift verification
+// Node.js Express backend: Telegram MiniApp init, gift verification, marketplace
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -9,128 +9,119 @@ const cheerio = require('cheerio');
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 
-// Конфигурация через окружение
-const BOT_TOKEN       = process.env.BOT_TOKEN;
-const apiId           = Number(process.env.API_ID);
-const apiHash         = process.env.API_HASH;
-const SESSION_STRING  = process.env.SESSION_STRING || '';
+// ENV vars
+const BOT_TOKEN      = process.env.BOT_TOKEN;
+const apiId          = Number(process.env.API_ID);
+const apiHash        = process.env.API_HASH;
+const SESSION_STRING = process.env.SESSION_STRING || '';
 
 if (!BOT_TOKEN || !apiId || !apiHash) {
-  console.error('Не заданы BOT_TOKEN, API_ID или API_HASH в окружении');
+  console.error('Missing BOT_TOKEN, API_ID or API_HASH');
   process.exit(1);
 }
 
-// Инициализация MTProto клиента из env SESSION_STRING
+// MTProto client
 const stringSession = new StringSession(SESSION_STRING);
 const mtClient = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 5 });
 
-(async () => {
-  try {
-    await mtClient.start({ botAuthToken: BOT_TOKEN });
-    const newSession = mtClient.session.save();
-    console.log('=== NEW SESSION STRING ===');
-    console.log(newSession);
-    console.log('==========================');
-    console.log('MTProto client is ready');
-  } catch (err) {
-    console.error('Ошибка при инициализации MTProto клиента:', err);
-    process.exit(1);
-  }
+(async()=>{
+  await mtClient.start({ botAuthToken: BOT_TOKEN });
+  console.log('MTProto ready, new session:', mtClient.session.save());
 })();
 
 const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Кэш метаданных подарков
-const giftStore = new Map();
+// In-memory stores
+const giftStore = new Map();      // slug -> metadata
+const sellList  = [];             // array of { gift, price, sellerId }
 
-/**
- * POST /api/init
- * Верификация initData и initDataUnsafe, возвращает баланс и unique_id
- */
+// Helpers
+function normalizeUrl(u) {
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  return u;
+}
+
+// --- Init endpoint ---
 app.post('/api/init', (req, res) => {
   const { initData, initDataUnsafe } = req.body;
-  if (!initData || !initDataUnsafe || !initDataUnsafe.user) {
-    return res.status(400).json({ error: 'Invalid init payload', errorType: 'invalid_init' });
+  if (!initData || !initDataUnsafe?.user) {
+    return res.status(400).json({ error: 'Invalid init payload' });
   }
-  // TODO: верифицировать подпись initData с помощью BOT_TOKEN
   const user = initDataUnsafe.user;
   const uniqueId = `U${user.id}`;
-  console.log(`Init for user ${user.id}`);
-  // TODO: получить реальный баланс из БД
   res.json({ balance: 0, unique_id: uniqueId });
 });
 
-/**
- * POST /api/check-gift
- * Проверка владения и парсинг метаданных подарка
- * Тело: { url: string, userId: number }
- */
+// --- Check gift endpoint ---
 app.post('/api/check-gift', async (req, res) => {
-  let { url, userId } = req.body;
-  if (!url || !userId) {
-    return res.status(400).json({ error: 'Missing url or userId', errorType: 'missing_params' });
-  }
-  // Normalize URL: ensure protocol
-  if (!/^https?:\/\//i.test(url)) {
-    url = 'https://' + url;
-  }
   try {
+    let { url, userId } = req.body;
+    if (!url || !userId) throw { code:400, msg:'Missing url or userId' };
+    url = normalizeUrl(url);
     const slug = url.split('/').pop();
-    if (!slug) {
-      return res.status(400).json({ error: 'Invalid URL format', errorType: 'invalid_url' });
-    }
+    if (!slug) throw { code:400, msg:'Invalid URL' };
 
-    // Парсим и кэшируем метаданные
+    // Fetch & cache metadata
     if (!giftStore.has(slug)) {
-      const { data: html } = await axios.get(url);
+      const html = (await axios.get(url)).data;
       const $ = cheerio.load(html);
       const table = $('table.tgme_gift_table');
-      if (!table.length) {
-        return res.status(404).json({ error: 'Gift not found', errorType: 'not_found' });
-      }
+      if (!table.length) throw { code:404, msg:'Gift not found' };
       const parseRow = name => {
         const row = table.find(`tr:has(th:contains("${name}"))`);
-        const text = row.find('td').text().replace(/\s*\d+(\.\d+)?%/, '').trim();
-        const rarity = parseFloat(row.find('mark').text()) || 0;
-        return { text, rarity };
+        return {
+          text: row.find('td').text().replace(/\s*\d+(\.\d+)?%/,'').trim(),
+          rarity: parseFloat(row.find('mark').text())||0
+        };
       };
-      const title   = slug.split('-')[0];
-      const imgUrl  = `https://nft.fragment.com/gift/${slug}.webp`;
-      const animUrl = `https://nft.fragment.com/gift/${slug}.lottie.json`;
-      const m = parseRow('Model');
-      const b = parseRow('Backdrop');
-      const s = parseRow('Symbol');
-      giftStore.set(slug, {
-        slug, title,
+      const m = parseRow('Model'), b = parseRow('Backdrop'), s = parseRow('Symbol');
+      const meta = {
+        slug,
+        title: slug.split('-')[0],
         model: m.text, model_rarity: m.rarity,
         backdrop: b.text, backdrop_rarity: b.rarity,
         symbol: s.text, symbol_rarity: s.rarity,
-        imgUrl, animUrl
-      });
+        imgUrl:  `https://nft.fragment.com/gift/${slug}.webp`,
+        animUrl: `https://nft.fragment.com/gift/${slug}.lottie.json`
+      };
+      giftStore.set(slug, meta);
     }
     const gift = giftStore.get(slug);
 
-    // Проверяем владельца через MTProto
-    const { data: ownerHtml } = await axios.get(url);
+    // Owner check
+    const ownerHtml = (await axios.get(url)).data;
     const $o = cheerio.load(ownerHtml);
     const ownerLink = $o('tr:has(th:contains("Owner")) td a').attr('href');
-    if (!ownerLink) {
-      return res.status(403).json({ error: 'Gift is hidden in profile', errorType: 'hidden' });
-    }
+    if (!ownerLink) throw { code:403, msg:'Gift is hidden', type:'hidden' };
     const username = ownerLink.split('/').pop();
     const entity = await mtClient.getEntity(username);
     if (Number(entity.id) !== userId) {
-      return res.status(403).json({ error: 'You are not the owner', errorType: 'not_owner' });
+      throw { code:403, msg:'You are not owner', type:'not_owner' };
     }
 
-    res.json({ owned: true, gift });
-  } catch (err) {
-    console.error('Error in /api/check-gift:', err);
-    res.status(500).json({ error: err.message, errorType: 'server_error' });
+    res.json({ owned:true, gift });
+  } catch(err) {
+    console.error(err);
+    const code = err.code||500;
+    res.status(code).json({ error: err.msg||err.message, errorType: err.type||'server_error' });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+// --- Sell list endpoints ---
+// Publish a gift for sale
+app.post('/api/sell', (req, res) => {
+  const { gift, price, sellerId } = req.body;
+  if (!gift || !price || !sellerId) return res.status(400).json({ error:'Missing params' });
+  sellList.push({ gift, price, sellerId, listedAt: Date.now() });
+  res.json({ success:true });
+});
+// Get all for-sale gifts
+app.get('/api/sell-list', (req, res) => {
+  res.json({ list: sellList });
+});
+
+// Static and start
+const PORT = process.env.PORT||3000;
+app.listen(PORT, ()=>console.log(`Server on ${PORT}`));
