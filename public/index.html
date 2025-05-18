@@ -1,82 +1,100 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gift Marketplace MiniApp</title>
+  <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Lottie for TGS animations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.8.1/lottie.min.js"></script>
   <style>
-    /* общий сброс */
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{width:100%;height:100%;background:#141414;font-family:sans-serif;}
-    #app{padding:16px;display:flex;flex-direction:column;align-items:center;}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #141414; font-family: sans-serif; }
+    #app { padding: 16px; display: flex; flex-direction: column; align-items: center; }
     /* Header */
-    .header{width:380px;height:70px;background:#1a1a1a;border-radius:12px;
-      box-shadow:0 4px 12px rgba(0,0,0,0.5);display:flex;align-items:center;padding:0 16px;}
-    .avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;}
-    .info{margin-left:12px;color:#fff;display:flex;flex-direction:column;}
-    .info .balance{font-size:18px;font-weight:bold}
-    .info .user-id{font-size:12px;color:#888}
-    /* Cards grid */
-    #cards{width:380px;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;}
-    .card{background:#1e1e1e;border-radius:8px;overflow:hidden;cursor:pointer;
-      display:flex;flex-direction:column;transition:transform .1s;}
-    .card:hover{transform:scale(1.02)}
-    .card img{width:100%;height:130px;object-fit:cover}
-    .card .title{color:#fff;padding:8px;font-weight:bold;font-size:14px;}
-    .card .btn{background:#2563eb;color:#fff;padding:6px;margin:0 8px 8px;border:none;
-      border-radius:4px;text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);
-      font-size:13px;}
-    .card .btn:hover{background:#1e40af}
-    /* Detail page overlay */
-    #detailPage{position:fixed;top:0;left:0;width:100%;height:100%;
-      background:rgba(0,0,0,0.9);display:none;flex-direction:column;align-items:center;
-      padding:16px;overflow:auto;z-index:20;}
-    #detailPage.show{display:flex;}
-    #detailPage .close{align-self:flex-end;color:#fff;font-size:24px;cursor:pointer;}
-    #detailPage .content{background:#222;border-radius:12px;padding:16px;
-      width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;}
-    /* Price popup */
-    #pricePopup{position:fixed;top:0;left:0;width:100%;height:100%;
-      background:rgba(0,0,0,0.7);display:none;justify-content:center;align-items:center;z-index:30;}
-    #pricePopup.show{display:flex;}
-    #pricePopup .box{background:#1e1e1e;padding:20px;border-radius:8px;width:300px;
-      display:flex;flex-direction:column;}
-    #pricePopup input{padding:10px;border-radius:4px;border:none;margin-bottom:10px;}
-    #pricePopup button{padding:10px;background:#2563eb;color:#fff;border:none;
-      border-radius:4px;cursor:pointer;}
+    .header { width: 380px; height: 70px; background: #1a1a1a; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; padding: 0 16px;
+    }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+    .info { margin-left: 12px; color: #fff; display: flex; flex-direction: column; }
+    .balance { font-size: 18px; font-weight: bold; }
+    .user-id { font-size: 12px; color: #888; }
+    /* Gift input popup triggered on header click */
+    /* Cards Grid */
+    #cards { width: 380px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+    .card { background: #1e1e1e; border-radius: 8px; cursor: pointer;
+      display: flex; flex-direction: column; transition: transform .1s;
+    }
+    .card:hover { transform: scale(1.02); }
+    .card img { width: 100%; height: 130px; object-fit: cover; }
+    .card .title { color: #fff; padding: 8px; font-weight: bold; }
+    .card .btn { background: #2563eb; color: #fff; margin: 0 8px 8px; padding: 6px;
+      border: none; border-radius: 4px; cursor: pointer; text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 13px;
+    }
+    .card .btn:hover { background: #1e40af; }
+    /* Detail Page */
+    #detailPage { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+      padding: 16px; overflow: auto; align-items: center; z-index: 20;
+    }
+    #detailPage.show { display: flex; }
+    #detailPage .close { align-self: flex-end; color: #fff; font-size: 24px; cursor: pointer; }
+    #detailPage .content { background: #222; border-radius: 12px;
+      padding: 16px; width: 100%; max-width: 380px; display: flex; flex-direction: column;
+    }
+    #detailPage .content .title { font-size: 18px; color: #fff; margin-bottom: 8px; }
+    #detailPage .content #lottie { width: 100%; height: 200px; margin-bottom: 12px; }
+    #detailPage .content table { width: 100%; color: #fff;
+      border-collapse: collapse; font-size: 14px;
+    }
+    #detailPage .content th, td { text-align: left; padding: 8px 0; border-bottom: 1px solid #444; }
+    #detailPage .content mark { background: #374151; color: #facc15;
+      padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal;
+    }
+    /* Price Popup */
+    #pricePopup { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center;
+      z-index: 30;
+    }
+    #pricePopup.show { display: flex; }
+    #pricePopup .box { background: #1e1e1e; padding: 20px; border-radius: 8px;
+      width: 300px; display: flex; flex-direction: column;
+    }
+    #pricePopup input { padding: 10px; border-radius: 4px; border: none; margin-bottom: 10px; }
+    #pricePopup button { padding: 10px; background: #2563eb; color: #fff;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <div class="header" id="header">
-      <img id="avatar" class="avatar"/>
+      <img id="avatar" class="avatar" alt="Avatar" />
       <div class="info">
         <div id="balance" class="balance">0 Stars</div>
         <div id="userId" class="user-id">ID: ----</div>
       </div>
     </div>
-    <!-- Input form -->
-    <div class="gift-form" id="giftForm" style="width:380px;margin-top:16px;">
-      <input id="giftUrls" type="text" placeholder="Введите ссылки через запятую" />
-      <button id="checkMulti">Проверить подарки</button>
-      <div id="errorMulti" style="color:#f87171;"></div>
-    </div>
-    <!-- Cards list -->
     <div id="cards"></div>
   </div>
 
-  <!-- Detail page -->
+  <!-- Detail Page -->
   <div id="detailPage">
     <div class="close" id="closeDetail">&times;</div>
-    <div class="content" id="detailContent"></div>
+    <div class="content" id="detailContent">
+      <div class="title"></div>
+      <div id="lottie"></div>
+      <table></table>
+    </div>
   </div>
 
-  <!-- Price popup -->
+  <!-- Price Popup -->
   <div id="pricePopup">
     <div class="box">
-      <input id="priceInput" placeholder="Укажите цену в $"/>
-      <button id="priceSubmit">Выставить на продажу</button>
+      <input id="priceInput" placeholder="Укажите цену в $" />
+      <button id="priceSubmit">Подтвердить продажу</button>
     </div>
   </div>
 
@@ -86,93 +104,328 @@
 
     let chatId, uniqueId, currentGift;
 
-    // Init
+    // Init handler
     (async()=>{
-      const unsafe = tg.initDataUnsafe, init = { initData: tg.initData, initDataUnsafe:unsafe };
+      const unsafe = tg.initDataUnsafe;
       chatId = unsafe.user.id;
       document.getElementById('avatar').src = unsafe.user.photo_url;
-      const r = await fetch('/api/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(init)});
-      const d = await r.json();
-      uniqueId = d.unique_id;
-      document.getElementById('balance').innerText = d.balance + ' Stars';
+      const resp = await fetch('/api/init', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ initData: tg.initData, initDataUnsafe: unsafe })
+      });
+      const json = await resp.json();
+      uniqueId = json.unique_id;
+      document.getElementById('balance').innerText = json.balance + ' Stars';
       document.getElementById('userId').innerText = 'ID: ' + uniqueId;
     })();
 
-    // Helpers
-    function normalizeUrl(u){ if(!/^https?:\/\//i.test(u)) u='https://'+u; return u; }
-    function createCard(g){
-      const c = document.createElement('div'); c.className='card';
-      c.innerHTML = `<img src="${g.imgUrl}"/><div class="title">${g.title} #${g.slug.split('-')[1]}</div>
-                     <button class="btn">Продать</button>`;
-      c.querySelector('.btn').onclick = e=>{
-        e.stopPropagation();
-        currentGift = g;
-        document.getElementById('pricePopup').classList.add('show');
-      };
-      c.onclick = ()=> showDetail(g);
-      return c;
-    }
+    // Show gift input on avatar click
+    document.getElementById('header').onclick = ()=>{
+      if (document.getElementById('giftInput')) return;
+      const inputDiv = document.createElement('div');
+      inputDiv.id = 'giftInput';
+      inputDiv.style.marginTop = '16px';
+      inputDiv.innerHTML = `
+        <input id="giftUrl" type="text" placeholder="https://t.me/nft/Slug-ID" />
+        <button id="addGiftBtn">Добавить подарок</button>
+        <div id="giftError" style="color:#f87171;margin-top:4px;"></div>
+      `;
+      document.getElementById('app').appendChild(inputDiv);
 
-    // Check multiple gifts
-    document.getElementById('checkMulti').onclick = async()=>{
-      const inp = document.getElementById('giftUrls'), err=document.getElementById('errorMulti');
-      err.innerText='';
-      const urls = inp.value.split(',').map(s=>s.trim()).filter(Boolean);
-      if(!urls.length){ err.innerText='Введите хотя бы одну ссылку'; return; }
-      for(const raw of urls){
-        try{
-          const url = normalizeUrl(raw);
-          const resp = await fetch('/api/check-gift',{
-            method:'POST',headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({url,userId:chatId})
+      document.getElementById('addGiftBtn').onclick = async()=>{
+        const urlEl = document.getElementById('giftUrl');
+        const errEl = document.getElementById('giftError');
+        errEl.innerText = '';
+        let url = urlEl.value.trim();
+        if (!url) { errEl.innerText = 'Введите ссылку'; return; }
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        try {
+          const resp = await fetch('/api/check-gift', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ url, userId: chatId })
           });
-          if(!resp.ok){
-            const e = await resp.json();
-            err.innerText = e.error;
-            continue;
-          }
-          const {gift} = await resp.json();
-          document.getElementById('cards').appendChild(createCard(gift));
-        }catch(e){
-          err.innerText = e.message;
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error);
+          const gift = data.gift;
+          addCard(gift, true);
+          urlEl.value = '';
+        } catch(e) {
+          errEl.innerText = e.message;
         }
-      }
+      };
     };
+
+    // Create card
+    function addCard(gift, isOwner){
+      const card = document.createElement('div'); card.className = 'card';
+      const btnText = isOwner ? 'Снять с продажи' : `Купить $${gift.price}`;
+      card.innerHTML = `
+        <img src="${gift.imgUrl}" />
+        <div class="title">${gift.title} #${gift.slug.split('-')[1]}</div>
+        <button class="btn">${btnText}</button>
+      `;
+      card.querySelector('.btn').onclick = async e=>{
+        e.stopPropagation();
+        if (isOwner) {
+          await fetch('/api/sell-remove',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ slug:gift.slug, sellerId:chatId }) });
+          card.remove();
+        } else {
+          // purchase logic
+        }
+      };
+      card.onclick = ()=> showDetail(gift);
+      document.getElementById('cards').appendChild(card);
+    }
 
     // Detail page
     function showDetail(g){
-      const c = document.getElementById('detailContent');
-      c.innerHTML = `<div style="font-size:18px;color:#fff;margin-bottom:8px;">
-                       ${g.title} <span style="color:#888">#${g.slug.split('-')[1]}</span>
-                     </div>
-                     <div id="lottie" style="width:100%;height:200px;"></div>
-                     <table style="width:100%;color:#fff;font-size:14px;text-align:left">
-                       <tr><th>Model</th><td>${g.model}<mark>${g.model_rarity}%</mark></td></tr>
-                       <tr><th>Backdrop</th><td>${g.backdrop}<mark>${g.backdrop_rarity}%</mark></td></tr>
-                       <tr><th>Symbol</th><td>${g.symbol}<mark>${g.symbol_rarity}%</mark></td></tr>
-                     </table>`;
-      document.getElementById('detailPage').classList.add('show');
-      // Load Lottie animation
-      lottie.loadAnimation({container:document.getElementById('lottie'),
-        renderer:'svg',loop:true,autoplay:true,path:g.animUrl});
+      currentGift = g;
+      const dp = document.getElementById('detailPage'); dp.classList.add('show');
+      const cont = document.getElementById('detailContent');
+      cont.querySelector('.title').innerHTML = `${g.title} <span style="color:#888">#${g.slug.split('-')[1]}</span>`;
+      const table = cont.querySelector('table');
+      table.innerHTML = `
+        <tr><th>Model</th><td>${g.model}<mark>${g.model_rarity}%</mark></td></tr>
+        <tr><th>Backdrop</th><td>${g.backdrop}<mark>${g.backdrop_rarity}%</mark></td></tr>
+        <tr><th>Symbol</th><td>${g.symbol}<mark>${g.symbol_rarity}%</mark></td></tr>
+      `;
+      lottie.loadAnimation({ container: document.getElementById('lottie'), renderer: 'svg', loop: true, autoplay: true, path: g.animUrl });
     }
-    document.getElementById('closeDetail').onclick = ()=> {
+    document.getElementById('closeDetail').onclick = ()=>{
       document.getElementById('detailPage').classList.remove('show');
       document.getElementById('lottie').innerHTML = '';
     };
 
-    // Price popup
-    document.getElementById('priceSubmit').onclick = async()=>{
-      const price = document.getElementById('priceInput').value.trim();
+    // Price submit
+    document.getElementById('priceSubmit').onclick = ()=>{
+      const price = parseFloat(document.getElementById('priceInput').value);
       if (!price) return;
-      await fetch('/api/sell',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ gift:currentGift, price, sellerId:chatId })
+      fetch('/api/sell',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ gift: currentGift, sellerId: chatId, price }) }).then(()=>{
+        document.getElementById('pricePopup').classList.remove('show');
       });
-      document.getElementById('pricePopup').classList.remove('show');
-      document.getElementById('priceInput').value='';
-      // Optionally refresh sell-list...
     };
+
+    // Fetch initial marketplace
+    (async()=>{
+      const resp = await fetch('/api/sell-list');
+      const { list } = await resp.json();
+      list.forEach(item=>{ item.gift.price = item.price; addCard(item.gift, item.sellerId===chatId); });
+    })();
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gift Marketplace MiniApp</title>
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Lottie for TGS animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.8.1/lottie.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #141414; font-family: sans-serif; }
+    #app { padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    /* Header */
+    .header { width: 380px; height: 70px; background: #1a1a1a; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; padding: 0 16px;
+    }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+    .info { margin-left: 12px; color: #fff; display: flex; flex-direction: column; }
+    .balance { font-size: 18px; font-weight: bold; }
+    .user-id { font-size: 12px; color: #888; }
+    /* Gift input popup triggered on header click */
+    /* Cards Grid */
+    #cards { width: 380px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+    .card { background: #1e1e1e; border-radius: 8px; cursor: pointer;
+      display: flex; flex-direction: column; transition: transform .1s;
+    }
+    .card:hover { transform: scale(1.02); }
+    .card img { width: 100%; height: 130px; object-fit: cover; }
+    .card .title { color: #fff; padding: 8px; font-weight: bold; }
+    .card .btn { background: #2563eb; color: #fff; margin: 0 8px 8px; padding: 6px;
+      border: none; border-radius: 4px; cursor: pointer; text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 13px;
+    }
+    .card .btn:hover { background: #1e40af; }
+    /* Detail Page */
+    #detailPage { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+      padding: 16px; overflow: auto; align-items: center; z-index: 20;
+    }
+    #detailPage.show { display: flex; }
+    #detailPage .close { align-self: flex-end; color: #fff; font-size: 24px; cursor: pointer; }
+    #detailPage .content { background: #222; border-radius: 12px;
+      padding: 16px; width: 100%; max-width: 380px; display: flex; flex-direction: column;
+    }
+    #detailPage .content .title { font-size: 18px; color: #fff; margin-bottom: 8px; }
+    #detailPage .content #lottie { width: 100%; height: 200px; margin-bottom: 12px; }
+    #detailPage .content table { width: 100%; color: #fff;
+      border-collapse: collapse; font-size: 14px;
+    }
+    #detailPage .content th, td { text-align: left; padding: 8px 0; border-bottom: 1px solid #444; }
+    #detailPage .content mark { background: #374151; color: #facc15;
+      padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal;
+    }
+    /* Price Popup */
+    #pricePopup { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center;
+      z-index: 30;
+    }
+    #pricePopup.show { display: flex; }
+    #pricePopup .box { background: #1e1e1e; padding: 20px; border-radius: 8px;
+      width: 300px; display: flex; flex-direction: column;
+    }
+    #pricePopup input { padding: 10px; border-radius: 4px; border: none; margin-bottom: 10px; }
+    #pricePopup button { padding: 10px; background: #2563eb; color: #fff;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="header" id="header">
+      <img id="avatar" class="avatar" alt="Avatar" />
+      <div class="info">
+        <div id="balance" class="balance">0 Stars</div>
+        <div id="userId" class="user-id">ID: ----</div>
+      </div>
+    </div>
+    <div id="cards"></div>
+  </div>
+
+  <!-- Detail Page -->
+  <div id="detailPage">
+    <div class="close" id="closeDetail">&times;</div>
+    <div class="content" id="detailContent">
+      <div class="title"></div>
+      <div id="lottie"></div>
+      <table></table>
+    </div>
+  </div>
+
+  <!-- Price Popup -->
+  <div id="pricePopup">
+    <div class="box">
+      <input id="priceInput" placeholder="Укажите цену в $" />
+      <button id="priceSubmit">Подтвердить продажу</button>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    let chatId, uniqueId, currentGift;
+
+    // Init handler
+    (async()=>{
+      const unsafe = tg.initDataUnsafe;
+      chatId = unsafe.user.id;
+      document.getElementById('avatar').src = unsafe.user.photo_url;
+      const resp = await fetch('/api/init', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ initData: tg.initData, initDataUnsafe: unsafe })
+      });
+      const json = await resp.json();
+      uniqueId = json.unique_id;
+      document.getElementById('balance').innerText = json.balance + ' Stars';
+      document.getElementById('userId').innerText = 'ID: ' + uniqueId;
+    })();
+
+    // Show gift input on avatar click
+    document.getElementById('header').onclick = ()=>{
+      if (document.getElementById('giftInput')) return;
+      const inputDiv = document.createElement('div');
+      inputDiv.id = 'giftInput';
+      inputDiv.style.marginTop = '16px';
+      inputDiv.innerHTML = `
+        <input id="giftUrl" type="text" placeholder="https://t.me/nft/Slug-ID" />
+        <button id="addGiftBtn">Добавить подарок</button>
+        <div id="giftError" style="color:#f87171;margin-top:4px;"></div>
+      `;
+      document.getElementById('app').appendChild(inputDiv);
+
+      document.getElementById('addGiftBtn').onclick = async()=>{
+        const urlEl = document.getElementById('giftUrl');
+        const errEl = document.getElementById('giftError');
+        errEl.innerText = '';
+        let url = urlEl.value.trim();
+        if (!url) { errEl.innerText = 'Введите ссылку'; return; }
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        try {
+          const resp = await fetch('/api/check-gift', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ url, userId: chatId })
+          });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error);
+          const gift = data.gift;
+          addCard(gift, true);
+          urlEl.value = '';
+        } catch(e) {
+          errEl.innerText = e.message;
+        }
+      };
+    };
+
+    // Create card
+    function addCard(gift, isOwner){
+      const card = document.createElement('div'); card.className = 'card';
+      const btnText = isOwner ? 'Снять с продажи' : `Купить $${gift.price}`;
+      card.innerHTML = `
+        <img src="${gift.imgUrl}" />
+        <div class="title">${gift.title} #${gift.slug.split('-')[1]}</div>
+        <button class="btn">${btnText}</button>
+      `;
+      card.querySelector('.btn').onclick = async e=>{
+        e.stopPropagation();
+        if (isOwner) {
+          await fetch('/api/sell-remove',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ slug:gift.slug, sellerId:chatId }) });
+          card.remove();
+        } else {
+          // purchase logic
+        }
+      };
+      card.onclick = ()=> showDetail(gift);
+      document.getElementById('cards').appendChild(card);
+    }
+
+    // Detail page
+    function showDetail(g){
+      currentGift = g;
+      const dp = document.getElementById('detailPage'); dp.classList.add('show');
+      const cont = document.getElementById('detailContent');
+      cont.querySelector('.title').innerHTML = `${g.title} <span style="color:#888">#${g.slug.split('-')[1]}</span>`;
+      const table = cont.querySelector('table');
+      table.innerHTML = `
+        <tr><th>Model</th><td>${g.model}<mark>${g.model_rarity}%</mark></td></tr>
+        <tr><th>Backdrop</th><td>${g.backdrop}<mark>${g.backdrop_rarity}%</mark></td></tr>
+        <tr><th>Symbol</th><td>${g.symbol}<mark>${g.symbol_rarity}%</mark></td></tr>
+      `;
+      lottie.loadAnimation({ container: document.getElementById('lottie'), renderer: 'svg', loop: true, autoplay: true, path: g.animUrl });
+    }
+    document.getElementById('closeDetail').onclick = ()=>{
+      document.getElementById('detailPage').classList.remove('show');
+      document.getElementById('lottie').innerHTML = '';
+    };
+
+    // Price submit
+    document.getElementById('priceSubmit').onclick = ()=>{
+      const price = parseFloat(document.getElementById('priceInput').value);
+      if (!price) return;
+      fetch('/api/sell',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ gift: currentGift, sellerId: chatId, price }) }).then(()=>{
+        document.getElementById('pricePopup').classList.remove('show');
+      });
+    };
+
+    // Fetch initial marketplace
+    (async()=>{
+      const resp = await fetch('/api/sell-list');
+      const { list } = await resp.json();
+      list.forEach(item=>{ item.gift.price = item.price; addCard(item.gift, item.sellerId===chatId); });
+    })();
   </script>
 </body>
 </html>
