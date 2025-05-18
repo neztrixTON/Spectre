@@ -52,7 +52,7 @@ const giftStore = new Map();
 app.post('/api/init', (req, res) => {
   const { initData, initDataUnsafe } = req.body;
   if (!initData || !initDataUnsafe || !initDataUnsafe.user) {
-    return res.status(400).json({ error: 'Invalid init payload' });
+    return res.status(400).json({ error: 'Invalid init payload', errorType: 'invalid_init' });
   }
   // TODO: верифицировать подпись initData с помощью BOT_TOKEN
   const user = initDataUnsafe.user;
@@ -68,19 +68,28 @@ app.post('/api/init', (req, res) => {
  * Тело: { url: string, userId: number }
  */
 app.post('/api/check-gift', async (req, res) => {
-  const { url, userId } = req.body;
+  let { url, userId } = req.body;
   if (!url || !userId) {
-    return res.status(400).json({ error: 'Missing url or userId' });
+    return res.status(400).json({ error: 'Missing url or userId', errorType: 'missing_params' });
+  }
+  // Normalize URL: ensure protocol
+  if (!/^https?:\/\//i.test(url)) {
+    url = 'https://' + url;
   }
   try {
     const slug = url.split('/').pop();
-    if (!slug) throw new Error('Invalid URL');
+    if (!slug) {
+      return res.status(400).json({ error: 'Invalid URL format', errorType: 'invalid_url' });
+    }
 
-    // Если нет метаданных — парсим и кэшируем
+    // Парсим и кэшируем метаданные
     if (!giftStore.has(slug)) {
       const { data: html } = await axios.get(url);
       const $ = cheerio.load(html);
       const table = $('table.tgme_gift_table');
+      if (!table.length) {
+        return res.status(404).json({ error: 'Gift not found', errorType: 'not_found' });
+      }
       const parseRow = name => {
         const row = table.find(`tr:has(th:contains("${name}"))`);
         const text = row.find('td').text().replace(/\s*\d+(\.\d+)?%/, '').trim();
@@ -107,17 +116,19 @@ app.post('/api/check-gift', async (req, res) => {
     const { data: ownerHtml } = await axios.get(url);
     const $o = cheerio.load(ownerHtml);
     const ownerLink = $o('tr:has(th:contains("Owner")) td a').attr('href');
-    if (!ownerLink) throw new Error('Owner not found');
+    if (!ownerLink) {
+      return res.status(403).json({ error: 'Gift is hidden in profile', errorType: 'hidden' });
+    }
     const username = ownerLink.split('/').pop();
     const entity = await mtClient.getEntity(username);
     if (Number(entity.id) !== userId) {
-      return res.status(403).json({ error: 'Вы не владелец подарка' });
+      return res.status(403).json({ error: 'You are not the owner', errorType: 'not_owner' });
     }
 
     res.json({ owned: true, gift });
   } catch (err) {
     console.error('Error in /api/check-gift:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, errorType: 'server_error' });
   }
 });
 
